@@ -5,8 +5,12 @@ from collections import OrderedDict
 
 import yaml
 
+from packaging.specifiers import SpecifierSet, InvalidSpecifier
+from packaging.version import Version, InvalidVersion
+
 from hokusai.lib.common import print_red, YAML_HEADER
 from hokusai.lib.exceptions import HokusaiError
+from hokusai.version import VERSION
 
 HOKUSAI_ENV_VAR_PREFIX = 'HOKUSAI_'
 HOKUSAI_CONFIG_FILE = os.path.join(os.getcwd(), 'hokusai', 'config.yml')
@@ -21,12 +25,28 @@ class HokusaiConfig(object):
       payload = YAML_HEADER + yaml.safe_dump(config, default_flow_style=False)
       f.write(payload)
 
-    return self
-
   def check(self):
-    if not os.path.isfile(HOKUSAI_CONFIG_FILE):
+    if not self._check_config_present(HOKUSAI_CONFIG_FILE):
       raise HokusaiError("Hokusai is not set up for this project - run 'hokusai setup'")
-    return self
+    if not self._check_required_version(self.hokusai_required_version, VERSION):
+      raise HokusaiError("Hokusai's current version %s does not satisfy this project's version requirements '%s'.  Aborting."
+                           % (VERSION, self.hokusai_required_version))
+
+  def _check_config_present(self, config_file):
+    return os.path.isfile(config_file)
+
+  def _check_required_version(self, required_version, target_version):
+    if required_version is None:
+      return True
+    try:
+      match_versions = SpecifierSet(required_version)
+    except InvalidSpecifier:
+      raise HokusaiError("Could not parse '%s' as a valid version specifier. See https://www.python.org/dev/peps/pep-0440/#version-specifiers" % required_version)
+    try:
+      compare_version = Version(target_version)
+    except InvalidVersion:
+      raise HokusaiError("Could not parse '%s' as a valid version identifier. See https://www.python.org/dev/peps/pep-0440/#version-scheme" % target_version)
+    return compare_version in match_versions
 
   def get(self, key, default=None, use_env=False, _type=str):
     if use_env:
@@ -51,7 +71,6 @@ class HokusaiConfig(object):
       raise HokusaiError("Environment variable %s could not be cast to %s" % (env_var, _type))
 
   def _config_value_for(self, key, _type):
-    self.check()
     with open(HOKUSAI_CONFIG_FILE, 'r') as config_file:
       config_struct = yaml.safe_load(config_file.read())
       try:
@@ -69,6 +88,10 @@ class HokusaiConfig(object):
     if project is None:
       raise HokusaiError("Unconfigured 'project-name'! Plz check ./hokusai/config.yml")
     return project
+
+  @property
+  def hokusai_required_version(self):
+    return self.get('hokusai-required-version')
 
   @property
   def pre_deploy(self):
