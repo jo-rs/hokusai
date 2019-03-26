@@ -13,6 +13,7 @@ from botocore import session as botosession
 
 from termcolor import cprint
 
+from hokusai.lib.config import config
 from hokusai.lib.exceptions import CalledProcessError
 
 CONTEXT_SETTINGS = {
@@ -23,35 +24,43 @@ CONTEXT_SETTINGS = {
 
 EXIT_SIGNALS = [signal.SIGHUP, signal.SIGINT, signal.SIGQUIT, signal.SIGPIPE, signal.SIGTERM]
 
-YAML_HEADER = '---\n'
-
 VERBOSE = False
 
 AWS_DEFAULT_REGION = 'us-east-1'
 
-def smart_str(s):
+def smart_str(s, newline_before=False, newline_after=False):
+  if newline_before:
+    s = '\n' + s
+  if newline_after:
+    s = s + '\n'
   if isinstance(s, unicode):
       return unicode(s).encode("utf-8")
   elif isinstance(s, int) or isinstance(s, float):
       return str(s)
   return s
 
-def print_green(msg):
-  cprint(smart_str(msg), 'green')
+def print_smart(msg, newline_before=False, newline_after=False):
+  print(smart_str(msg, newline_before, newline_after))
 
-def print_red(msg):
-  cprint(smart_str(msg), 'red')
+def print_green(msg, newline_before=False, newline_after=False):
+  cprint(smart_str(msg, newline_before, newline_after), 'green')
+
+def print_red(msg, newline_before=False, newline_after=False):
+  cprint(smart_str(msg, newline_before, newline_after), 'red')
+
+def print_yellow(msg, newline_before=False, newline_after=False):
+  cprint(smart_str(msg, newline_before, newline_after), 'yellow')
 
 def set_verbosity(v):
   global VERBOSE
-  VERBOSE = v
+  VERBOSE = v or config.always_verbose
 
 def get_verbosity():
   global VERBOSE
   return VERBOSE
 
 def verbose(msg):
-  if VERBOSE: cprint("==> hokusai exec `%s`" % smart_str(msg), 'yellow')
+  if VERBOSE: print_yellow("==> hokusai exec `%s`" % msg, newline_after=True)
   return msg
 
 
