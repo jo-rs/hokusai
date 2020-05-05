@@ -1,6 +1,7 @@
 import os
 
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
+from jinja2.exceptions import TemplateError
 
 from hokusai.lib.exceptions import HokusaiError
 
@@ -14,11 +15,10 @@ class TemplateRenderer(object):
       env = Environment(loader=FileSystemLoader(os.path.split(self.template_path)[0]), undefined=StrictUndefined)
       return env.get_template(os.path.split(self.template_path)[1])
     except IOError:
-      raise HokusaiError("Template not found.")
+      raise HokusaiError("Template %s not found." % self.template_path)
 
   def render(self):
-    template = self.load_template()
     try:
-      return template.render(**self.template_config)
-    except Exception, e:
-      raise HokusaiError("Rendering template raised error %s" % repr(e))
+      return self.load_template().render(**self.template_config)
+    except TemplateError, e:
+      raise HokusaiError("Rendering template raised error %s <message '%s'>" % (e.__class__, e.message))
